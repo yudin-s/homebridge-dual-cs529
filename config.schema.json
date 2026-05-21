@@ -18,28 +18,38 @@
         "type": "string",
         "default": "DualCS529"
       },
-      "host": {
-        "title": "Host",
-        "type": "string",
-        "default": "127.0.0.1"
-      },
-      "port": {
-        "title": "Port",
-        "type": "number",
-        "default": 3333,
-        "minimum": 1,
-        "maximum": 65535
-      },
       "deviceName": {
         "title": "Device Name",
         "type": "string",
         "default": "CS529"
       },
-      "simulate": {
-        "title": "Use Simulated Transport",
-        "description": "Use in-memory simulated transport for local testing.",
-        "type": "boolean",
-        "default": false
+      "peripheralId": {
+        "title": "Peripheral ID",
+        "description": "BLE MAC/address of the CS529 device.",
+        "type": "string"
+      },
+      "peripheralName": {
+        "title": "Peripheral Name",
+        "description": "Optional BLE peripheral name to match during scanning.",
+        "type": "string"
+      },
+      "serviceUuid": {
+        "title": "Service UUID",
+        "description": "BLE control service UUID. Defaults to the Nordic UART service UUID visible in the APK.",
+        "type": "string",
+        "default": "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+      },
+      "commandCharacteristicUuid": {
+        "title": "Command Characteristic UUID",
+        "description": "BLE characteristic UUID used to write commands. Defaults to Nordic UART RX.",
+        "type": "string",
+        "default": "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+      },
+      "notifyCharacteristicUuid": {
+        "title": "Notify Characteristic UUID",
+        "description": "BLE characteristic UUID used to receive status notifications. Defaults to Nordic UART TX.",
+        "type": "string",
+        "default": "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
       },
       "pollIntervalMs": {
         "title": "Poll Interval (ms)",

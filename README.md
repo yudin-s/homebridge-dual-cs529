@@ -10,8 +10,7 @@ Homebridge dynamic platform plugin for Dual CS529.
 - Repeat mode switch
 - Loop mode switch
 - Reconnect with desired-state restoration on reconnect
-- Simulated transport for local testing without a physical CS 529
-- Socket transport abstraction for a future BLE bridge process or external protocol probe
+- Native BLE transport built on `@abandonware/noble`
 
 ## Installation
 
@@ -26,9 +25,11 @@ npm install -g homebridge-dual-cs529
   "platform": "DualCS529",
   "name": "DualCS529",
   "deviceName": "CS529",
-  "host": "192.168.1.20",
-  "port": 3333,
-  "simulate": false,
+  "peripheralId": "AA:BB:CC:DD:EE:FF",
+  "peripheralName": "CS529",
+  "serviceUuid": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+  "commandCharacteristicUuid": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+  "notifyCharacteristicUuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
   "pollIntervalMs": 120000,
   "reconnectDelayMs": 2000,
   "reconnectMaxAttempts": 15
@@ -37,14 +38,14 @@ npm install -g homebridge-dual-cs529
 
 ## Notes
 
-- Set `simulate: true` to use the in-memory transport when developing or running unit tests.
 - Commands are sent using the protocol patterns extracted from APK traffic:
   - `@0PTTTRS33`, `@0PTTTRS45`, `@0PTTTRS78`
   - `@0PTTTST00`, `@0PTTTST01`, `@0PTTTST02`
   - `@0PTTTRP%02d`
   - `@0PTTTLS%02d`
 - Query commands use the APK-visible form: `@0?PTTTRS`, `@0?PTTTST`, `@0?PTTTLS`, `@0?PTTTRP`.
-- The real BLE layer is intentionally isolated behind the transport interface. Replace or extend the socket transport with a Noble/BlueZ transport once a physical device is available for validation.
+- Unit tests mock the BLE adapter and exercise reconnect + restore behavior without any physical device.
+- The UUIDs above are the Nordic UART service and RX/TX characteristics found in the APK. Override them only if a real device scan shows different values.
 
 ## Development
 

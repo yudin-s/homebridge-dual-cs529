@@ -28,7 +28,9 @@
   },
   "author": "Serge Judin",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "@abandonware/noble": "^1.9.2-26"
+  },
   "devDependencies": {
     "@types/node": "^20.17.0",
     "homebridge": "^1.11.4",

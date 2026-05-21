@@ -10,7 +10,7 @@ import {
   StartStopMode,
   parseStatusPayload,
 } from './protocol';
-import { Transport } from './transport';
+import { BLEClient, ProtocolFrame } from './transport';
 
 export interface DualCS529ControllerOptions {
   pollIntervalMs?: number;
@@ -28,7 +28,7 @@ export class DualCS529Controller extends EventEmitter {
   private state: DeviceState = { ...DEFAULT_DEVICE_STATE };
 
   public constructor(
-    private readonly transport: Transport,
+    private readonly client: BLEClient,
     options: DualCS529ControllerOptions = {},
   ) {
     super();
@@ -38,10 +38,10 @@ export class DualCS529Controller extends EventEmitter {
       reconnectMaxAttempts: options.reconnectMaxAttempts ?? 15,
     };
 
-    this.transport.on('connected', () => this.handleConnected());
-    this.transport.on('disconnected', () => this.handleDisconnected());
-    this.transport.on('message', (frame) => this.handleMessage(frame.message));
-    this.transport.on('error', (error) => this.handleError(error));
+    this.client.on('connected', () => this.handleConnected());
+    this.client.on('disconnected', () => this.handleDisconnected());
+    this.client.on('message', (frame: ProtocolFrame) => this.handleMessage(frame.message));
+    this.client.on('error', (error) => this.handleError(error));
 
     if (this.options.pollIntervalMs > 0) {
       this.poller = setInterval(() => this.queryAll(), this.options.pollIntervalMs).unref();
@@ -61,21 +61,18 @@ export class DualCS529Controller extends EventEmitter {
     if (this.poller) {
       clearInterval(this.poller);
     }
-    void this.transport.disconnect();
+    void this.client.disconnect();
     this.removeAllListeners();
   }
 
   public async connect(): Promise<void> {
-    if (this.transport.isConnected) {
+    if (this.client.isConnected) {
       return;
     }
-    this.state = { ...this.state };
     try {
-      await this.transport.connect();
+      await this.client.connect();
       this.reconnectAttempts = 0;
       this.reconnecting = false;
-      await this.restoreDesiredState();
-      await this.queryAll();
     } catch (error) {
       this.handleError(error as Error);
     }
@@ -117,12 +114,12 @@ export class DualCS529Controller extends EventEmitter {
   }
 
   private async sendOrSchedule(command: string): Promise<void> {
-    if (!this.transport.isConnected) {
-      this.handleError(new Error('transport is not connected'));
+    if (!this.client.isConnected) {
+      this.handleError(new Error('ble client is not connected'));
       return;
     }
     try {
-      await this.transport.send(command);
+      await this.client.send(command);
     } catch (error) {
       this.handleError(error as Error);
     }

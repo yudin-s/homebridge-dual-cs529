@@ -1,4 +1,4 @@
-import { SimulatedTransport, SocketTransport, Transport } from './transport';
+import { BLEAdapterOptions, BLEClient, NobleBLEClient } from './transport';
 import { DualCS529Controller, DualCS529ControllerOptions } from './controller';
 import { DualCS529Accessory } from './accessory';
 
@@ -43,21 +43,25 @@ type CharacteristicState = {
 };
 
 type PlatformConfig = {
-  host?: string;
-  port?: number;
   name?: string;
   deviceName?: string;
-  simulate?: boolean;
+  peripheralId?: string;
+  peripheralName?: string;
+  serviceUuid?: string;
+  commandCharacteristicUuid?: string;
+  notifyCharacteristicUuid?: string;
   pollIntervalMs?: number;
   reconnectDelayMs?: number;
   reconnectMaxAttempts?: number;
 };
 
 export interface HomebridgeDualCS529Config extends PlatformConfig {
-  host?: string;
-  port?: number;
   deviceName?: string;
-  simulate?: boolean;
+  peripheralId?: string;
+  peripheralName?: string;
+  serviceUuid?: string;
+  commandCharacteristicUuid?: string;
+  notifyCharacteristicUuid?: string;
   pollIntervalMs?: number;
   reconnectDelayMs?: number;
   reconnectMaxAttempts?: number;
@@ -85,7 +89,8 @@ export class DualCS529Platform {
 
   private async discoverDevices(): Promise<void> {
     const name = this.config.deviceName ?? 'CS529';
-    const accessoryId = `homebridge-dual-cs529-${name}-${this.config.host ?? 'simulated'}:${this.config.port ?? 3333}`;
+    const accessoryTag = this.config.peripheralId ?? this.config.peripheralName ?? name;
+    const accessoryId = `homebridge-dual-cs529-${name}-${accessoryTag}`;
     const uuid = this.api.hap.uuid.generate(accessoryId);
     if (this.accessories.has(uuid)) {
       return;
@@ -101,14 +106,14 @@ export class DualCS529Platform {
       return;
     }
 
-    const transport = this.createTransport();
+    const client = this.createClient();
     const options: DualCS529ControllerOptions = {
       pollIntervalMs: this.config.pollIntervalMs,
       reconnectDelayMs: this.config.reconnectDelayMs,
       reconnectMaxAttempts: this.config.reconnectMaxAttempts,
     };
 
-    const controller = new DualCS529Controller(transport, options);
+    const controller = new DualCS529Controller(client, options);
     this.controllers.set(accessory.UUID, controller);
     const pluginAccessory = new DualCS529Accessory(
       controller,
@@ -123,14 +128,14 @@ export class DualCS529Platform {
     void controller.initialize();
   }
 
-  private createTransport(): Transport {
-    if (this.config.simulate) {
-      return new SimulatedTransport({ initialState: undefined });
-    }
-
-    return new SocketTransport({
-      host: this.config.host ?? '127.0.0.1',
-      port: this.config.port ?? 3333,
-    });
+  private createClient(): BLEClient {
+    const options: BLEAdapterOptions = {
+      peripheralId: this.config.peripheralId,
+      peripheralName: this.config.peripheralName ?? this.config.deviceName,
+      serviceUuid: this.config.serviceUuid,
+      commandCharacteristicUuid: this.config.commandCharacteristicUuid,
+      notifyCharacteristicUuid: this.config.notifyCharacteristicUuid,
+    };
+    return new NobleBLEClient(options);
   }
 }
