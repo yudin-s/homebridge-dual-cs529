@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "pluginAlias": "DualCS529",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Dual CS529",
+  "footerDisplay": "Dual CS529",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "platform": {
+        "title": "Platform",
+        "type": "string",
+        "default": "DualCS529"
+      },
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "default": "DualCS529"
+      },
+      "host": {
+        "title": "Host",
+        "type": "string",
+        "default": "127.0.0.1"
+      },
+      "port": {
+        "title": "Port",
+        "type": "number",
+        "default": 3333,
+        "minimum": 1,
+        "maximum": 65535
+      },
+      "deviceName": {
+        "title": "Device Name",
+        "type": "string",
+        "default": "CS529"
+      },
+      "simulate": {
+        "title": "Use Simulated Transport",
+        "description": "Use in-memory simulated transport for local testing.",
+        "type": "boolean",
+        "default": false
+      },
+      "pollIntervalMs": {
+        "title": "Poll Interval (ms)",
+        "description": "How often to poll current status.",
+        "type": "number",
+        "default": 120000,
+        "minimum": 1000
+      },
+      "reconnectDelayMs": {
+        "title": "Reconnect Delay (ms)",
+        "type": "number",
+        "default": 2000,
+        "minimum": 200
+      },
+      "reconnectMaxAttempts": {
+        "title": "Max Reconnect Attempts",
+        "type": "number",
+        "default": 15,
+        "minimum": 1
+      }
+    },
+    "required": ["platform", "name", "deviceName"]
+  }
+}

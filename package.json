@@ -1,0 +1,45 @@
+{
+  "name": "homebridge-dual-cs529",
+  "version": "1.0.0",
+  "description": "Homebridge dynamic platform plugin for Dual CS529",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "homebridge-plugin",
+    "homebridge",
+    "dual",
+    "cs529",
+    "turntable",
+    "bluetooth"
+  ],
+  "homebridge": {
+    "pluginAlias": "DualCS529",
+    "pluginType": "platform"
+  },
+  "engines": {
+    "node": ">=18",
+    "homebridge": ">=1.8.0 || >=2.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist coverage",
+    "test": "vitest run",
+    "watch:test": "vitest"
+  },
+  "author": "Serge Judin",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "homebridge": "^1.11.4",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "config.schema.json"
+  ],
+  "private": false
+}
