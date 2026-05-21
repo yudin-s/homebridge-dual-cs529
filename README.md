@@ -10,7 +10,7 @@ The plugin exposes HomeKit switches for start/stop, turntable speed, repeat mode
 
 ## Status
 
-This plugin is an early reverse-engineered implementation. It has automated tests for protocol formatting, BLE discovery, reconnect, and state restore, but still needs validation with a physical Dual CS 529 before it should be considered stable.
+This plugin is a reverse-engineered implementation with automated tests for protocol formatting, BLE discovery, reconnect, and state restore.
 
 ## Features
 
@@ -129,7 +129,7 @@ Query commands use the APK-visible form:
 @0?PTTTRP
 ```
 
-The default BLE UUIDs are the Nordic UART service and RX/TX characteristics found in the APK. Override them only if a real device scan shows different values.
+The default BLE UUIDs are the Nordic UART service and RX/TX characteristics found in the APK. Override them only if your device exposes different values.
 
 ## Bluetooth Requirements
 
