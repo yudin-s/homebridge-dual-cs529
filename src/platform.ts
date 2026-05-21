@@ -131,7 +131,7 @@ export class DualCS529Platform {
   private createClient(): BLEClient {
     const options: BLEAdapterOptions = {
       peripheralId: this.config.peripheralId,
-      peripheralName: this.config.peripheralName ?? this.config.deviceName,
+      peripheralName: this.config.peripheralName,
       serviceUuid: this.config.serviceUuid,
       commandCharacteristicUuid: this.config.commandCharacteristicUuid,
       notifyCharacteristicUuid: this.config.notifyCharacteristicUuid,

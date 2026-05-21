@@ -25,12 +25,12 @@
       },
       "peripheralId": {
         "title": "Peripheral ID",
-        "description": "BLE MAC/address of the CS529 device.",
+        "description": "Optional BLE MAC/address of the CS529 device for pinning. Leave empty to auto-discover.",
         "type": "string"
       },
       "peripheralName": {
         "title": "Peripheral Name",
-        "description": "Optional BLE peripheral name to match during scanning.",
+        "description": "Optional BLE peripheral name prefix to match during scanning (for pinning). Leave empty for auto-discovery.",
         "type": "string"
       },
       "serviceUuid": {

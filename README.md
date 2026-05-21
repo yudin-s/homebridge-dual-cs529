@@ -25,8 +25,6 @@ npm install -g homebridge-dual-cs529
   "platform": "DualCS529",
   "name": "DualCS529",
   "deviceName": "CS529",
-  "peripheralId": "AA:BB:CC:DD:EE:FF",
-  "peripheralName": "CS529",
   "serviceUuid": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
   "commandCharacteristicUuid": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
   "notifyCharacteristicUuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
@@ -35,6 +33,8 @@ npm install -g homebridge-dual-cs529
   "reconnectMaxAttempts": 15
 }
 ```
+
+Discovery by default creates one HomeKit accessory and auto-connects it to the first matching and connectable Dual CS529 / Dual CS turntable found via the Nordic UART service UUID from the APK. If an early candidate cannot connect or does not expose the expected command/notify characteristics, the plugin keeps scanning until another candidate works or the scan times out. `peripheralId` and `peripheralName` are optional pinning filters; `peripheralName` is treated as a prefix.
 
 ## Notes
 

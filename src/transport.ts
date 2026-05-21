@@ -20,6 +20,7 @@ export interface BLEClient {
 }
 
 export interface BLEAdapterOptions {
+  noble?: NobleLike;
   peripheralId?: string;
   peripheralName?: string;
   serviceUuid?: string;
@@ -39,6 +40,8 @@ export class NobleBLEClient extends EventEmitter implements BLEClient {
   private readonly serviceUuid?: string;
   private readonly commandCharacteristicUuid?: string;
   private readonly notifyCharacteristicUuid?: string;
+  private readonly scanServiceUuids: string[];
+  private readonly noble: NobleLike;
 
   private peripheral?: NoblePeripheral;
   private commandCharacteristic?: {
@@ -55,10 +58,16 @@ export class NobleBLEClient extends EventEmitter implements BLEClient {
 
   public constructor(options: BLEAdapterOptions = {}) {
     super();
+    this.noble = options.noble ?? noble;
     this.scanTimeoutMs = options.scanTimeoutMs ?? 12_000;
     this.serviceUuid = normalizeUuid(options.serviceUuid ?? DEFAULT_BLE_UUIDS.serviceUuid);
-    this.commandCharacteristicUuid = normalizeUuid(options.commandCharacteristicUuid ?? DEFAULT_BLE_UUIDS.commandCharacteristicUuid);
-    this.notifyCharacteristicUuid = normalizeUuid(options.notifyCharacteristicUuid ?? DEFAULT_BLE_UUIDS.notifyCharacteristicUuid);
+    this.scanServiceUuids = this.serviceUuid ? [this.serviceUuid] : [];
+    this.commandCharacteristicUuid = normalizeUuid(
+      options.commandCharacteristicUuid ?? DEFAULT_BLE_UUIDS.commandCharacteristicUuid,
+    );
+    this.notifyCharacteristicUuid = normalizeUuid(
+      options.notifyCharacteristicUuid ?? DEFAULT_BLE_UUIDS.notifyCharacteristicUuid,
+    );
     this.target = {
       id: normalizeUuid(options.peripheralId),
       name: options.peripheralName?.toLowerCase(),
@@ -125,33 +134,55 @@ export class NobleBLEClient extends EventEmitter implements BLEClient {
   }
 
   private async performConnect(): Promise<void> {
+    let discovery: MatchingPeripheralDiscovery | undefined;
+
     try {
-      await waitForPoweredOn();
-      const peripheral = await discoverPeripheral(this.target, this.scanTimeoutMs);
-      await connectPeripheral(peripheral);
-      const serviceUuidFilter = this.serviceUuid ? [this.serviceUuid] : null;
-      const services = await discoverServices(peripheral, serviceUuidFilter);
-      const { commandCharacteristic, notifyCharacteristic } = await resolveCharacteristics(
-        services,
-        {
-          commandCharacteristicUuid: this.commandCharacteristicUuid,
-          notifyCharacteristicUuid: this.notifyCharacteristicUuid,
-        },
-      );
-      await subscribeToNotifications(notifyCharacteristic);
+      await waitForPoweredOn(this.noble);
+      discovery = createMatchingPeripheralDiscovery(this.noble, this.target, {
+        scanTimeoutMs: this.scanTimeoutMs,
+        scanServiceUuids: this.scanServiceUuids,
+      });
 
-      this.peripheral = peripheral;
-      this.commandCharacteristic = commandCharacteristic;
-      this.notifyCharacteristic = notifyCharacteristic;
-      this.connected = true;
+      while (true) {
+        const peripheral = await discovery.nextCandidate();
+        try {
+          await connectPeripheral(peripheral);
+          const services = await discoverServices(peripheral, this.scanServiceUuids);
+          const { commandCharacteristic, notifyCharacteristic } = await resolveCharacteristics(
+            services,
+            {
+              commandCharacteristicUuid: this.commandCharacteristicUuid,
+              notifyCharacteristicUuid: this.notifyCharacteristicUuid,
+            },
+          );
+          await subscribeToNotifications(notifyCharacteristic);
 
-      peripheral.on('disconnect', this.handleDisconnect);
-      notifyCharacteristic.on('data', this.handleData.bind(this));
-      this.emit('connected');
+          this.peripheral = peripheral;
+          this.commandCharacteristic = commandCharacteristic;
+          this.notifyCharacteristic = notifyCharacteristic;
+          this.connected = true;
+          discovery.stop();
+
+          peripheral.on('disconnect', this.handleDisconnect);
+          notifyCharacteristic.on('data', this.handleData.bind(this));
+          this.emit('connected');
+          return;
+        } catch (error) {
+          this.connected = false;
+          this.peripheral = undefined;
+          this.commandCharacteristic = undefined;
+          this.notifyCharacteristic?.removeAllListeners();
+          this.notifyCharacteristic = undefined;
+          await disconnectPeripheral(peripheral);
+          continue;
+        }
+      }
     } catch (error) {
       this.connected = false;
       this.peripheral?.disconnect(() => undefined);
       throw error as Error;
+    } finally {
+      discovery?.stop();
     }
   }
 
@@ -182,81 +213,125 @@ export class NobleBLEClient extends EventEmitter implements BLEClient {
   };
 }
 
-async function waitForPoweredOn(): Promise<void> {
-  if (getNobleState() === 'poweredOn') {
+async function waitForPoweredOn(nobleLike: NobleLike): Promise<void> {
+  if (getNobleState(nobleLike) === 'poweredOn') {
     return;
   }
 
-  if (getNobleState() === 'unsupported' || getNobleState() === 'unauthorized') {
-    throw new Error(`noble state is ${getNobleState()}`);
+  if (getNobleState(nobleLike) === 'unsupported' || getNobleState(nobleLike) === 'unauthorized') {
+    throw new Error(`noble state is ${getNobleState(nobleLike)}`);
   }
 
   await new Promise<void>((resolve, reject) => {
     const onStateChange = (state: string) => {
       if (state === 'poweredOn') {
-        noble.removeListener('stateChange', onStateChange);
+        nobleLike.removeListener('stateChange', onStateChange);
         resolve();
         return;
       }
       if (state === 'unsupported' || state === 'unauthorized') {
-        noble.removeListener('stateChange', onStateChange);
+        nobleLike.removeListener('stateChange', onStateChange);
         reject(new Error(`noble state is ${state}`));
       }
     };
 
-    noble.on('stateChange', onStateChange);
+    nobleLike.on('stateChange', onStateChange);
   });
 }
 
-function getNobleState(): string {
-  const anyNoble = noble as { state?: string; _state?: string };
+function getNobleState(nobleLike: NobleLike): string {
+  const anyNoble = nobleLike as { state?: string; _state?: string };
   return anyNoble.state ?? anyNoble._state ?? 'unknown';
 }
 
-async function discoverPeripheral(
+function createMatchingPeripheralDiscovery(
+  nobleLike: NobleLike,
   target: { id?: string; name?: string },
-  timeoutMs: number,
-): Promise<NoblePeripheral> {
-  const serviceUuids: string[] = [];
+  options: {
+    scanTimeoutMs: number;
+    scanServiceUuids: string[];
+  },
+): MatchingPeripheralDiscovery {
+  const queue: NoblePeripheral[] = [];
+  const waiters: Array<{
+    resolve: (peripheral: NoblePeripheral) => void;
+    reject: (error: Error) => void;
+  }> = [];
+  const seenIds = new Set<string>();
+  let stopped = false;
+  const timeoutError = new Error('BLE peripheral not found within timeout');
 
-  const peripheral = await new Promise<NoblePeripheral>((resolve, reject) => {
-    const clear = () => {
-      noble.removeListener('discover', onDiscover);
-      noble.stopScanning();
-    };
-
-    const finish = () => {
-      clearTimeout(timer);
-      clear();
-    };
-
-    const timer = sleepTimeout(() => {
-      finish();
-      reject(new Error('BLE peripheral not found within timeout'));
-    }, timeoutMs);
-
-    const onDiscover = (candidate: NoblePeripheral) => {
-      if (target.id && !matchPeripheralId(candidate, target.id)) {
-        return;
+  const finish = (error?: Error): void => {
+    if (stopped) {
+      return;
+    }
+    stopped = true;
+    clearTimeout(timer);
+    nobleLike.removeListener('discover', onDiscover);
+    nobleLike.stopScanning();
+    if (error) {
+      while (waiters.length > 0) {
+        const waiter = waiters.shift();
+        waiter?.reject(error);
       }
-      if (target.name && !matchPeripheralName(candidate, target.name)) {
-        return;
-      }
-      finish();
-      resolve(candidate);
-    };
+    }
+  };
 
-    noble.on('discover', onDiscover);
+  const timer = sleepTimeout(() => {
+    finish(timeoutError);
+  }, options.scanTimeoutMs);
 
-    noble.startScanning(serviceUuids, false, (error?: Error | null) => {
-      if (error) {
-        finish();
-        reject(error);
-      }
-    });
+  const onDiscover = (candidate: NoblePeripheral) => {
+    if (stopped) {
+      return;
+    }
+    if (target.id && !matchPeripheralId(candidate, target.id)) {
+      return;
+    }
+    if (target.name && !matchPeripheralName(candidate, target.name)) {
+      return;
+    }
+
+    const key = `${candidate.id}|${candidate.address}`;
+    if (seenIds.has(key)) {
+      return;
+    }
+    seenIds.add(key);
+
+    if (waiters.length > 0) {
+      const waiter = waiters.shift();
+      waiter?.resolve(candidate);
+      return;
+    }
+    queue.push(candidate);
+  };
+
+  nobleLike.on('discover', onDiscover);
+  nobleLike.startScanning(options.scanServiceUuids, false, (error?: Error | null) => {
+    if (error) {
+      finish(error);
+    }
   });
 
-  return peripheral;
+  return {
+    nextCandidate: (): Promise<NoblePeripheral> =>
+      new Promise((resolve, reject) => {
+        if (stopped) {
+          reject(timeoutError);
+          return;
+        }
+
+        if (queue.length > 0) {
+          resolve(queue.shift() as NoblePeripheral);
+          return;
+        }
+
+        waiters.push({ resolve, reject });
+      }),
+    stop: (error?: Error): void => {
+      finish(error);
+    },
+  };
 }
 
 function matchPeripheralId(peripheral: NoblePeripheral, targetId: string): boolean {
@@ -264,7 +339,7 @@ function matchPeripheralId(peripheral: NoblePeripheral, targetId: string): boole
 }
 
 function matchPeripheralName(peripheral: NoblePeripheral, targetName: string): boolean {
-  return (peripheral.name ?? '').toLowerCase() === targetName.toLowerCase();
+  return (peripheral.name ?? '').toLowerCase().startsWith(targetName);
 }
 
 function connectPeripheral(peripheral: NoblePeripheral): Promise<void> {
@@ -288,7 +363,7 @@ async function discoverServices(
     uuids: string[] | null,
     cb: (error: Error | null, characteristics: NobleCharacteristic[]) => void,
   ) => void;
-}> > {
+}>> {
   return new Promise((resolve, reject) => {
     peripheral.discoverServices(serviceUuids, (error, services) => {
       if (error) {
@@ -324,10 +399,12 @@ async function resolveCharacteristics(
 }
 
 async function discoverCharacteristics(
-  service: { discoverCharacteristics: (
-    uuids: string[] | null,
-    cb: (error: Error | null, characteristics: NobleCharacteristic[]) => void,
-  ) => void; },
+  service: {
+    discoverCharacteristics: (
+      uuids: string[] | null,
+      cb: (error: Error | null, characteristics: NobleCharacteristic[]) => void,
+    ) => void;
+  },
 ): Promise<NobleCharacteristic[]> {
   return new Promise((resolve, reject) => {
     service.discoverCharacteristics(null, (error, characteristics) => {
@@ -336,6 +413,14 @@ async function discoverCharacteristics(
         return;
       }
       resolve(characteristics as NobleCharacteristic[]);
+    });
+  });
+}
+
+async function disconnectPeripheral(peripheral: NoblePeripheral): Promise<void> {
+  await new Promise<void>((resolve) => {
+    peripheral.disconnect(() => {
+      resolve();
     });
   });
 }
@@ -383,6 +468,11 @@ function normalizeUuid(value?: string): string | undefined {
     .toLowerCase();
 }
 
+type MatchingPeripheralDiscovery = {
+  nextCandidate: () => Promise<NoblePeripheral>;
+  stop: (error?: Error) => void;
+};
+
 type NobleCharacteristic = {
   uuid: string;
   properties: string[];
@@ -409,4 +499,13 @@ type NoblePeripheral = {
     }>) => void,
   ) => void;
   on: (event: 'disconnect', cb: () => void) => void;
+};
+
+type NobleLike = {
+  on(event: 'stateChange', listener: (state: string) => void): void;
+  on(event: 'discover', listener: (peripheral: NoblePeripheral) => void): void;
+  removeListener(event: 'stateChange', listener: (state: string) => void): void;
+  removeListener(event: 'discover', listener: (peripheral: NoblePeripheral) => void): void;
+  startScanning(serviceUuids: string[], allowDuplicates: boolean, callback: (error?: Error | null) => void): void;
+  stopScanning(): void;
 };
