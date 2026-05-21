@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.1
+
+- Refined README wording for Homebridge publication and verification review.
+
 ## 0.1.0
 
 - Initial Homebridge dynamic platform plugin for Dual CS 529 vinyl turntables.
