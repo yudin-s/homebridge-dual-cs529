@@ -1,16 +1,24 @@
 {
   "name": "homebridge-dual-cs529",
-  "version": "1.0.0",
-  "description": "Homebridge dynamic platform plugin for Dual CS529",
+  "version": "0.1.0",
+  "description": "Homebridge plugin for controlling a Dual CS 529 vinyl turntable over Bluetooth LE",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "keywords": [
     "homebridge-plugin",
     "homebridge",
     "dual",
+    "dual-cs529",
+    "dual-cs-529",
     "cs529",
+    "cs-529",
     "turntable",
-    "bluetooth"
+    "record-player",
+    "vinyl",
+    "vinyl-record-player",
+    "bluetooth",
+    "ble",
+    "homekit"
   ],
   "homebridge": {
     "pluginAlias": "DualCS529",
@@ -23,11 +31,23 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist coverage",
+    "prepack": "npm run build",
     "test": "vitest run",
     "watch:test": "vitest"
   },
   "author": "Serge Judin",
   "license": "MIT",
+  "homepage": "https://github.com/yudin-s/homebridge-dual-cs529#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yudin-s/homebridge-dual-cs529.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yudin-s/homebridge-dual-cs529/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@abandonware/noble": "^1.9.2-26"
   },
@@ -41,6 +61,7 @@
     "dist/",
     "README.md",
     "LICENSE",
+    "CHANGELOG.md",
     "config.schema.json"
   ],
   "private": false

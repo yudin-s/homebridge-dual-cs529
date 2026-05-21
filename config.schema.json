@@ -3,8 +3,8 @@
   "pluginAlias": "DualCS529",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Dual CS529",
-  "footerDisplay": "Dual CS529",
+  "headerDisplay": "Control a Dual CS 529 vinyl turntable / record player from Apple Home via Bluetooth LE.",
+  "footerDisplay": "Leave Peripheral ID and Peripheral Name empty to auto-discover the first connectable Dual CS 529 / Dual CS turntable. Pin a device only if multiple compatible turntables are nearby.",
   "schema": {
     "type": "object",
     "properties": {
@@ -16,12 +16,13 @@
       "name": {
         "title": "Platform Name",
         "type": "string",
-        "default": "DualCS529"
+        "default": "Dual CS529"
       },
       "deviceName": {
-        "title": "Device Name",
+        "title": "HomeKit Device Name",
+        "description": "Name shown for the vinyl turntable accessory in Apple Home.",
         "type": "string",
-        "default": "CS529"
+        "default": "Dual CS529"
       },
       "peripheralId": {
         "title": "Peripheral ID",
